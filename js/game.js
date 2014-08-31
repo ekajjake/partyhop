@@ -123,6 +123,7 @@ var Solo = function(game, x, y, frame) {
 
   // initialize your prefab here
   this.anchor.setTo(0.5, 0.5);
+  this.animations.add('splash');
   this.game.physics.arcade.enableBody(this);
   
 };
@@ -239,6 +240,7 @@ module.exports = Menu;
   var mobcount = 1;
   var jumptimer = 0;
 
+  var cupsize = 8;
   var mobrarity = 4;
   var timetojump = 140;
   var jumpspeed = 300;
@@ -312,7 +314,6 @@ module.exports = Menu;
 
       if (this.solo.body.x < -16)
       {
-        console.log("die");
         this.deathHandler();
       }
 
@@ -333,7 +334,21 @@ module.exports = Menu;
           (this.mob2.key == 'eb' && this.mob2.body.touching.up) ||
           (this.mob3.key == 'eb' && this.mob3.body.touching.up))
       {
-        this.deathHandler();
+        if ((this.solo.body.x < this.mob1.body.x + cupsize && this.solo.body.x >
+            this.mob1.body.x - cupsize) ||
+            (this.solo.body.x < this.mob2.body.x + cupsize && this.solo.body.x >
+            this.mob2.body.x - cupsize) ||
+            (this.solo.body.x < this.mob3.body.x + cupsize && this.solo.body.x >
+            this.mob3.body.x - cupsize))
+        {
+          this.solo.animations.play('splash', 30, false, true);
+          this.deathHandler();
+        }
+        else
+        {
+          this.solo.body.immovable = true;
+          this.deathHandler();
+        }
       }
 
       if (this.game.input.activePointer.isDown && this.solo.body.touching.down)
@@ -409,8 +424,48 @@ module.exports = Menu;
     },
     deathHandler: function()
     {
-      this.game.state.start('gameover');
+      var bestScore;
+      if (!!localStorage)
+      {
+        bestScore = localStorage.getItem('bestScore');
+        if (!bestScore || bestScore < this.score)
+        {
+          bestScore = this.score;
+          localStorage.setItem('bestScore', bestScore);
+        }
+      }
+      else
+      {
+        bestScore = 'xxx';
+      }
+      console.log('died');
+      this.mobGenerator.timer.stop();
+      this.mob1.body.velocity.x = 0;
+      this.mob2.body.velocity.x = 0;
+      this.mob3.body.velocity.x = 0;
+      this.ground.autoScroll(0,0);
+      this.scoreText.setText('');
+      var gameover = this.game.add.bitmapText(this.game.width/2 + 0.5, 50, 
+          'partyfont', 'Game Over', 64);
+      gameover.x = this.game.width/2 - gameover.textWidth/2;
+
+      var scored = this.game.add.bitmapText(this.game.width/2 + 0.5, 100,
+          'partyfont', 'Score  ' + this.score.toString(), 32);
+      scored.x = this.game.width/2 - scored.textWidth/2;
+
+      var best = this.game.add.bitmapText(this.game.width/2 + 0.5, 125,
+          'partyfont', 'Best   ' + bestScore.toString(), 32);
+      best.x = this.game.width/2 - best.textWidth/2;
+
+      var resetButton = this.game.add.button(this.game.width/2 + 0.5, 200,
+          'playbutton', this.resetClick, this);
+      resetButton.anchor.setTo(0.5, 0.5);
+
     },
+    resetClick: function()
+    {
+      this.game.state.start('play');
+    }
   };
   module.exports = Play;
 
@@ -433,7 +488,7 @@ Preload.prototype = {
     this.load.image('ground', 'assets/ground.png');
     this.load.image('title', 'assets/title.png');
     this.load.image('playbutton', 'assets/playbutton.png');
-    this.load.image('solo', 'assets/solo.png');
+    this.load.spritesheet('solo', 'assets/solo.png', 16, 16, 6);
     this.load.image('ea', 'assets/a.png');
     this.load.image('eb', 'assets/b.png');
     this.load.image('killzone', 'assets/killzone.png');
